@@ -25,7 +25,7 @@ import java.util.List;
  * @param <S> User state type
  */
 public abstract class DescriptorlessMessageHandler <M extends Message, S extends ProcessState> 
-        implements MessageHandler<M, S, Message>{
+        implements MessageHandler<M, Message>{
     
     /**
      * Processes a received message.

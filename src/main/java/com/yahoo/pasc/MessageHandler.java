@@ -28,7 +28,7 @@ import java.util.List;
  * @param <S> User state type
  * @param <D> Intermediate message descriptors type that this handler generates
  */
-public interface MessageHandler<M extends Message, S extends ProcessState, D> {
+public interface MessageHandler<M extends Message, D> {
 	
     /**
      * Evaluates to true when the given message has the correct type for this message handler
@@ -48,7 +48,7 @@ public interface MessageHandler<M extends Message, S extends ProcessState, D> {
      * @param state Current state, can be mutated
      * @return List of message descriptors or null
      */
-    public List<D> processMessage(M message, S state);
+    public List<D> processMessage(M message);
 	
     /**
      * Produces the final output messages from the message descriptors.
@@ -59,6 +59,6 @@ public interface MessageHandler<M extends Message, S extends ProcessState, D> {
      * @param descriptors Generated descriptors by processMessage()
      * @return List of output messages, or null
      */
-    public List<Message> getOutputMessages(S state, List<D> descriptors);
+    public List<Message> getOutputMessages(List<D> descriptors);
 	
 }

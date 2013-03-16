@@ -52,8 +52,9 @@ public class RuntimeTest {
     @Before
     public void setUp() throws SecurityException, NoSuchFieldException {
         runtime = new PascRuntime<State>();
-        runtime.setState(new State());
-        runtime.addHandler(TMessage.class, new Handler());
+        State state = new State();
+        runtime.setState(state);
+        runtime.addHandler(TMessage.class, new Handler(state));
         runtime.setFailureHandler(new TestFailureHandler());
     }
     
@@ -80,9 +81,11 @@ public class RuntimeTest {
     public void multipleOperations() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+		runtime.addHandler(TMessage.class, new Handler(state ) {
+			
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 int a = state.getA() + message.a;
 
                 state.setA(a);
@@ -103,9 +106,10 @@ public class RuntimeTest {
     public void inconsistentGetsSets() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 state.setC("foo", 1);
                 state.getC("bar");
                 return null;
@@ -118,9 +122,10 @@ public class RuntimeTest {
     public void getAfterSet() {
         TMessage m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 state.setC("foo", message.a);
                 int a = (int) state.getC("foo");
                 return Arrays.asList(new TMessage(a));
@@ -143,9 +148,10 @@ public class RuntimeTest {
         Message m = new TMessage(5);
         m.storeReplica(m);
         State s = runtime.getState();
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 long l = state.getC(Integer.toString(message.a));
                 l += message.a;
                 state.setC(Integer.toString(message.a + 1), l);
@@ -176,9 +182,10 @@ public class RuntimeTest {
         Message m = new TMessage(5);
         m.storeReplica(m);
         State s = runtime.getState();
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 state.setC(Integer.toString(message.a), 33);
                 state.setC(Integer.toString(message.a + 1), 34);
                 state.setC(Integer.toString(message.a), 35);
@@ -230,11 +237,12 @@ public class RuntimeTest {
     public void detectCorruptMessage() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 message.a++;
-                return super.processMessage(message, state);
+                return super.processMessage(message);
             }
         });
         try {
@@ -249,10 +257,11 @@ public class RuntimeTest {
     public void detectCorruptState() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
-                List<TMessage> result = super.processMessage(message, state);
+            public List<TMessage> processMessage(TMessage message) {
+                List<TMessage> result = super.processMessage(message);
                 try {
                     Field f = state.getClass().getDeclaredField("state");
                     State s = (State) f.get(state);
@@ -275,16 +284,17 @@ public class RuntimeTest {
     public void detectInconsistentMessages() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             private boolean firstRun = true;
 
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 if (firstRun) {
                     state.setA(state.getA()+1);
                 }
                 firstRun = !firstRun;
-                return super.processMessage(message, state);
+                return super.processMessage(message);
             }
         });
         try {
@@ -299,11 +309,12 @@ public class RuntimeTest {
     public void detectInconsistentChange() {
         Message m = new TMessage(5);
         m.storeReplica(m);
-        runtime.addHandler(TMessage.class, new Handler() {
+        State state = new State();
+        runtime.addHandler(TMessage.class, new Handler(state) {
             private boolean firstRun = true;
 
             @Override
-            public List<TMessage> processMessage(TMessage message, State state) {
+            public List<TMessage> processMessage(TMessage message) {
                 if (firstRun) {
                     state.setA(state.getA()+1);
                 } else {
@@ -377,15 +388,21 @@ public class RuntimeTest {
         }
     }
     
-    private static class Handler implements MessageHandler<TMessage, State, TMessage> {
+    private static class Handler implements MessageHandler<TMessage, TMessage> {
 
+    	protected State state = new State();
+    	
         @Override
         public boolean guardPredicate(TMessage receivedMessage) {
             return true;
         }
+        
+        public Handler (State state){
+        	this.state = state;
+        }
 
         @Override
-        public List<TMessage> processMessage(TMessage message, State state)
+        public List<TMessage> processMessage(TMessage message)
         {
             int a = state.getA() + message.a;
             state.setA(a);
@@ -394,7 +411,7 @@ public class RuntimeTest {
         }
 
         @Override
-        public List<Message> getOutputMessages(State state, List<TMessage> descriptors) {
+        public List<Message> getOutputMessages(List<TMessage> descriptors) {
             return descriptors == null ? null : Collections.<Message>unmodifiableList(descriptors);
         }
         

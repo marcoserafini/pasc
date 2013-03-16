@@ -48,8 +48,8 @@ public final class PascRuntime<S extends ProcessState> {
     
     private static final Logger LOG = LoggerFactory.getLogger(PascRuntime.class);
 
-    private Map<Class<? extends Message>, MessageHandler<Message, S, ?>> handlers = 
-        new HashMap<Class<? extends Message>, MessageHandler<Message, S, ?>>();
+    private Map<Class<? extends Message>, MessageHandler<Message, ?>> handlers = 
+        new HashMap<Class<? extends Message>, MessageHandler<Message, ?>>();
 
     private S state;
     private S replica;
@@ -120,9 +120,9 @@ public final class PascRuntime<S extends ProcessState> {
      */
     @SuppressWarnings("unchecked")
     public void addHandler(Class<? extends Message> messageType, 
-            MessageHandler<? extends Message, S, ?> handler) 
+            MessageHandler<? extends Message, ?> handler) 
     {
-        handlers.put(messageType, (MessageHandler<Message, S, ?>) handler);
+        handlers.put(messageType, (MessageHandler<Message, ?>) handler);
     }
 
     private Encapsulator stateEncapsulator, replicaEncapsulator;
@@ -160,7 +160,7 @@ public final class PascRuntime<S extends ProcessState> {
      */
     public List<Message> handleMessage(Message receivedMessage) {
         ControlObject control = new ControlObject();
-        MessageHandler<Message, S, ?> handler = handlers.get(receivedMessage.getClass());
+        MessageHandler<Message, ?> handler = handlers.get(receivedMessage.getClass());
         if (handler == null) {
             LOG.warn("No handler found for message {} ", receivedMessage);
             return emptyMessages;
@@ -183,13 +183,13 @@ public final class PascRuntime<S extends ProcessState> {
         }
     }
 
-    private <D> List<Message> unsafeInvoke(final MessageHandler<Message, S, D> handler, 
+    private <D> List<Message> unsafeInvoke(final MessageHandler<Message, D> handler, 
             final Message receivedMessage) {
           receivedMessage.verify();
           List<Message> result;
           synchronized (this) {
-              List<D> descriptors = handler.processMessage(receivedMessage, state);
-              result = handler.getOutputMessages(state, descriptors);
+              List<D> descriptors = handler.processMessage(receivedMessage);
+              result = handler.getOutputMessages(descriptors);
           }
           if (result != null) {
               for (Message m : result) {
@@ -209,7 +209,7 @@ public final class PascRuntime<S extends ProcessState> {
     }
     
     private class Result<D> {
-        public MessageHandler<Message, S, D> handler; 
+        public MessageHandler<Message, D> handler; 
         public Message receivedMessage;
         public Message clonedMessage;
         public List<Message> responses;
@@ -234,7 +234,7 @@ public final class PascRuntime<S extends ProcessState> {
         ControlFlow cfl, cfl_;
         ControlFlow cf_l, cf_l_;
         
-        MessageHandler<Message, S, D> handler = result.handler;
+        MessageHandler<Message, D> handler = result.handler;
         Message receivedMessage = result.receivedMessage;
         Message clonedMessage = result.clonedMessage;
 
@@ -243,8 +243,7 @@ public final class PascRuntime<S extends ProcessState> {
 
         // compute N
         stateEncapsulator.setCheckState(true);
-        @SuppressWarnings("unchecked")
-        List<D> descriptors = handler.processMessage(receivedMessage, (S) stateEncapsulator);
+        List<D> descriptors = handler.processMessage(receivedMessage);
         
         // check control flow
         cfl = cfl_ = ControlFlow.SET;
@@ -254,8 +253,7 @@ public final class PascRuntime<S extends ProcessState> {
         control.cfs = control.cfr = ControlFlow.SET;
 
         // update R
-        @SuppressWarnings("unchecked")
-        List<D> replicaDescriptors = handler.processMessage(clonedMessage, (S) replicaEncapsulator);
+        List<D> replicaDescriptors = handler.processMessage(clonedMessage);
 
         if (control.cf_s != control.cf_r || control.cf_s != ControlFlow.RESET) {
             throw new ControlFlowException("cf_s =/= cf_r or cf_s =/= RESET");
@@ -294,11 +292,11 @@ public final class PascRuntime<S extends ProcessState> {
         }
 
         // generate messages
-        result.responses = handler.getOutputMessages(state, descriptors);
-        result.replicas = handler.getOutputMessages(replica, replicaDescriptors);
+        result.responses = handler.getOutputMessages(descriptors);
+        result.replicas = handler.getOutputMessages(replicaDescriptors);
     }
 
-    private <D> List<Message> invoke(final MessageHandler<Message, S, D> handler, 
+    private <D> List<Message> invoke(final MessageHandler<Message, D> handler, 
             final Message receivedMessage, ControlObject control) {
 
         List<Message> responses;

@@ -96,11 +96,11 @@
   		<scope>compile</scope>
   	</dependency>
   	<dependency>
-  		<groupId>asm</groupId>
-  		<artifactId>asm</artifactId>
-  		<version>3.3.1</version>
-  		<type>jar</type>
-  		<scope>compile</scope>
+			<groupId>com.esotericsoftware.reflectasm</groupId>
+			<artifactId>reflectasm</artifactId>
+			<version>1.07</version>
+			<scope>compile</scope>
+			<!-- classifier>shaded</classifier -->
   	</dependency>
   </dependencies>
 </project>

@@ -26,7 +26,7 @@ import com.yahoo.pasc.MessageHandler;
 public class GuardException extends CorruptionException {
     private static final long serialVersionUID = -6830498977668729617L;
 
-    public GuardException(String description, MessageHandler<?, ?, ?> handler, Message receivedMessage) {
+    public GuardException(String description, MessageHandler<?, ?> handler, Message receivedMessage) {
         super(description + " Handler: " + handler + " Message: " + receivedMessage);
     }
 
